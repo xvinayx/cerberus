@@ -1,0 +1,61 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --color-brand-50: #effaf7;
+  --color-brand-100: #d7f2ea;
+  --color-brand-500: #14a383;
+  --color-brand-600: #0d8a6f;
+  --color-brand-700: #0b6e5a;
+  --color-brand-800: #0c5849;
+  --color-ink: #13202b;
+}
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  background: #ffffff;
+  color: var(--color-ink);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Map price pins */
+.price-pin {
+  background: transparent;
+  border: none;
+}
+.price-pin span {
+  display: inline-block;
+  transform: translate(-50%, -100%);
+  white-space: nowrap;
+  padding: 3px 8px;
+  border-radius: 9999px;
+  font: 600 12px/1.2 var(--font-sans);
+  color: #fff;
+  background: var(--color-brand-700);
+  border: 2px solid #fff;
+  box-shadow: 0 1px 4px rgb(0 0 0 / 0.35);
+  transition: transform 120ms ease, background 120ms ease;
+}
+.price-pin.is-lease span {
+  background: #3d4f63;
+}
+.price-pin.is-active span {
+  background: var(--color-ink);
+  transform: translate(-50%, -100%) scale(1.12);
+}
+.leaflet-container {
+  font-family: var(--font-sans);
+}
+.leaflet-popup-content {
+  margin: 0;
+  width: 240px !important;
+}
+.leaflet-popup-content-wrapper {
+  padding: 0;
+  overflow: hidden;
+  border-radius: 10px;
+}
