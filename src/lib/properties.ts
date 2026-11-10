@@ -1,24 +1,29 @@
 /**
  * Data access layer. Everything in the app reads listings through these
- * functions, so swapping the sample data for a real listings feed or a
- * database only means changing this file.
+ * functions, so changing the data source only means changing this file.
+ *
+ * Listings come from src/data/kidder-listings.json, which
+ * `npm run import:kidder` refreshes from Kidder Mathews' public property search.
  */
-import { SAMPLE_PROPERTIES } from "./sample-data";
-import type { Property, PropertyFilters } from "./types";
+import "server-only";
+import data from "@/data/kidder-listings.json";
+import { formatListingPrice, formatPinPrice, formatSize } from "./format";
+import type { MapPin, Property, PropertyFilters } from "./types";
 
-/** Size used for filtering and sorting: available SF for leases, building SF for sales. */
-export function effectiveSize(p: Property): number | null {
-  return p.listingType === "lease" ? p.availableSize : p.buildingSize;
-}
+const LISTINGS = data.listings as Property[];
+const BY_ID = new Map(LISTINGS.map((p) => [p.id, p]));
 
-/** Price used for filtering and sorting: sale price, or lease rate in $/SF/yr. */
+export const DATA_SOURCE = { name: data.source, fetchedAt: data.fetchedAt };
+export const PAGE_SIZE = 40;
+
+/** Price used for filtering and sorting: sale price, or lease rate in $/SF/month. */
 export function effectivePrice(p: Property): number | null {
   return p.listingType === "lease" ? p.leaseRate : p.price;
 }
 
 function matchesQuery(p: Property, q: string): boolean {
   if (!q) return true;
-  const haystack = [p.title, p.address, p.city, p.state, p.zip, `${p.city}, ${p.state}`, p.type]
+  const haystack = [p.title, p.address, p.city, p.state, p.zip, p.type, p.subtype ?? "", ...p.brokers]
     .join(" ")
     .toLowerCase();
   return q
@@ -29,7 +34,7 @@ function matchesQuery(p: Property, q: string): boolean {
 }
 
 export function searchProperties(filters: PropertyFilters): Property[] {
-  const results = SAMPLE_PROPERTIES.filter((p) => {
+  const results = LISTINGS.filter((p) => {
     if (p.listingType !== filters.listingType) return false;
     if (filters.types.length && !filters.types.includes(p.type)) return false;
     if (!matchesQuery(p, filters.q)) return false;
@@ -37,18 +42,8 @@ export function searchProperties(filters: PropertyFilters): Property[] {
     const price = effectivePrice(p);
     if (filters.minPrice !== null && (price === null || price < filters.minPrice)) return false;
     if (filters.maxPrice !== null && (price === null || price > filters.maxPrice)) return false;
-
-    const size = effectiveSize(p);
-    if (filters.minSize !== null && (size === null || size < filters.minSize)) return false;
-    if (filters.maxSize !== null && (size === null || size > filters.maxSize)) return false;
-
-    if (
-      filters.listingType === "sale" &&
-      filters.minCapRate !== null &&
-      (p.capRate === null || p.capRate < filters.minCapRate)
-    ) {
-      return false;
-    }
+    if (filters.minSize !== null && (p.size === null || p.size < filters.minSize)) return false;
+    if (filters.maxSize !== null && (p.size === null || p.size > filters.maxSize)) return false;
     return true;
   });
 
@@ -66,33 +61,42 @@ export function searchProperties(filters: PropertyFilters): Property[] {
       case "price-desc":
         return nullsLast(effectivePrice(a), effectivePrice(b), -1);
       case "size-desc":
-        return nullsLast(effectiveSize(a), effectiveSize(b), -1);
-      case "cap-desc":
-        return nullsLast(a.capRate, b.capRate, -1);
+        return nullsLast(a.size, b.size, -1);
       case "newest":
       default:
-        return b.listedAt.localeCompare(a.listedAt);
+        return b.recency - a.recency;
     }
   });
 }
 
+export function toMapPin(p: Property): MapPin {
+  return {
+    id: p.id,
+    lat: p.lat,
+    lng: p.lng,
+    listingType: p.listingType,
+    pinLabel: formatPinPrice(p),
+    priceLabel: formatListingPrice(p),
+    summary: `${p.type} · ${formatSize(p)}`,
+    title: p.title,
+    address: `${p.address}, ${p.city}, ${p.state}`,
+  };
+}
+
 export function getPropertyById(id: string): Property | undefined {
-  return SAMPLE_PROPERTIES.find((p) => p.id === id);
+  return BY_ID.get(id);
 }
 
-export function getAllPropertyIds(): string[] {
-  return SAMPLE_PROPERTIES.map((p) => p.id);
-}
-
-/** Other listings in the same city, closest first. */
+/** Other listings of the same kind in the same city, closest first. */
 export function getNearbyProperties(property: Property, limit = 4): Property[] {
-  const distance = (p: Property) =>
-    (p.lat - property.lat) ** 2 + (p.lng - property.lng) ** 2;
-  return SAMPLE_PROPERTIES.filter((p) => p.id !== property.id && p.city === property.city)
+  const distance = (p: Property) => (p.lat - property.lat) ** 2 + (p.lng - property.lng) ** 2;
+  return LISTINGS.filter(
+    (p) =>
+      p.id !== property.id &&
+      p.city === property.city &&
+      p.listingType === property.listingType &&
+      p.title !== property.title,
+  )
     .sort((a, b) => distance(a) - distance(b))
     .slice(0, limit);
-}
-
-export function getMarkets(): string[] {
-  return [...new Set(SAMPLE_PROPERTIES.map((p) => `${p.city}, ${p.state}`))].sort();
 }

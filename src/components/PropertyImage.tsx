@@ -1,8 +1,8 @@
 import type { PropertyType } from "@/lib/types";
 
 /**
- * Illustrated placeholder used instead of listing photos (the sample data has
- * none). Deterministic per property id + variant so it never flickers.
+ * Illustrated placeholder shown when a listing has no photo (or it fails to
+ * load). Deterministic per property id + variant so it never flickers.
  */
 
 const SKIES = [
@@ -111,7 +111,11 @@ function Building({ type, facade, lit, seed }: { type: PropertyType; facade: str
           <rect x="275" y="170" width="65" height="45" fill={facade} opacity="0.75" />
         </g>
       );
-    case "Mixed Use":
+    case "Healthcare":
+    case "Life Science":
+    case "Educational":
+    case "Religious":
+    case "Other":
       return (
         <g>
           <rect x="80" y="60" width="240" height="155" fill={facade} />
@@ -124,7 +128,6 @@ function Building({ type, facade, lit, seed }: { type: PropertyType; facade: str
         </g>
       );
     case "Land":
-    default:
       return (
         <g>
           <path d="M0 200 Q100 160 200 185 T400 175 V260 H0 z" fill="#8fbf7f" />

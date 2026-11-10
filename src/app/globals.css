@@ -52,10 +52,56 @@ body {
 }
 .leaflet-popup-content {
   margin: 0;
-  width: 240px !important;
 }
 .leaflet-popup-content-wrapper {
   padding: 0;
   overflow: hidden;
   border-radius: 10px;
+}
+
+/* Clusters of nearby pins */
+.cluster-pin {
+  background: transparent;
+  border: none;
+}
+.cluster-pin span {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9999px;
+  font: 700 13px/1 var(--font-sans);
+  color: #fff;
+  background: var(--color-brand-700);
+  border: 3px solid rgb(255 255 255 / 0.9);
+  box-shadow: 0 0 0 4px rgb(11 110 90 / 0.25), 0 1px 4px rgb(0 0 0 / 0.3);
+}
+
+/* Map popup card */
+.map-popup {
+  display: block;
+  padding: 12px;
+  color: var(--color-ink) !important;
+  text-decoration: none;
+  font-size: 13px;
+  line-height: 1.35;
+}
+.map-popup strong {
+  display: block;
+  font-size: 15px;
+}
+.map-popup span {
+  display: block;
+}
+.map-popup__title {
+  margin-top: 4px;
+  font-weight: 600;
+}
+.map-popup__address {
+  color: #64748b;
+  font-size: 12px;
+}
+.map-popup__cta {
+  margin-top: 8px;
+  font-weight: 600;
+  color: var(--color-brand-700);
 }

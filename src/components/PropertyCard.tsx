@@ -1,13 +1,7 @@
 import Link from "next/link";
 import type { Property } from "@/lib/types";
-import {
-  daysOnMarket,
-  formatListingPrice,
-  formatNumber,
-  formatSize,
-  pricePerSquareFoot,
-} from "@/lib/format";
-import PropertyImage from "./PropertyImage";
+import { formatListingPrice, formatNumber, formatSize, pricePerSquareFoot } from "@/lib/format";
+import ListingPhoto from "./ListingPhoto";
 
 export default function PropertyCard({
   property: p,
@@ -19,7 +13,6 @@ export default function PropertyCard({
   onHover?: (id: string | null) => void;
 }) {
   const ppsf = pricePerSquareFoot(p);
-  const dom = daysOnMarket(p.listedAt);
 
   return (
     <Link
@@ -37,39 +30,34 @@ export default function PropertyCard({
       }`}
     >
       <div className="relative aspect-[16/10] overflow-hidden">
-        <PropertyImage
+        <ListingPhoto
           id={p.id}
           type={p.type}
+          src={p.photoUrl}
+          alt={p.title}
           className="h-full w-full transition-transform duration-300 group-hover:scale-105"
         />
-        <div className="absolute left-2 top-2 flex gap-1.5">
+        <div className="absolute left-2 top-2 flex flex-wrap gap-1.5">
           <span
             className={`rounded px-2 py-0.5 text-xs font-semibold text-white ${
               p.listingType === "lease" ? "bg-slate-700" : "bg-brand-700"
             }`}
           >
-            {p.listingType === "lease" ? "For Lease" : "For Sale"}
+            {p.listingType === "lease" ? (p.sublease ? "Sublease" : "For Lease") : "For Sale"}
           </span>
-          {dom <= 7 && (
-            <span className="rounded bg-white/95 px-2 py-0.5 text-xs font-semibold text-ink">
-              New
-            </span>
+          {p.netLease && (
+            <span className="rounded bg-white/95 px-2 py-0.5 text-xs font-semibold text-ink">Net lease</span>
           )}
         </div>
       </div>
       <div className="space-y-1 p-3">
-        <div className="flex items-baseline justify-between gap-2">
-          <p className="text-lg font-bold text-ink">{formatListingPrice(p)}</p>
-          {p.capRate !== null && (
-            <p className="text-sm font-semibold text-brand-700">{p.capRate.toFixed(2)}% cap</p>
-          )}
-        </div>
+        <p className="text-lg font-bold text-ink">{formatListingPrice(p)}</p>
         <p className="flex flex-wrap gap-x-2 text-sm text-slate-700">
           <span className="font-medium">{p.type}</span>
           <span aria-hidden="true">·</span>
           <span>
             {formatSize(p)}
-            {p.listingType === "lease" && p.type !== "Land" ? " avail." : ""}
+            {p.listingType === "lease" && p.size !== null ? " avail." : ""}
           </span>
           {ppsf !== null && (
             <>
@@ -77,10 +65,10 @@ export default function PropertyCard({
               <span>${formatNumber(Math.round(ppsf))}/SF</span>
             </>
           )}
-          {p.units !== null && (
+          {p.buildingClass && (
             <>
               <span aria-hidden="true">·</span>
-              <span>{p.units} units</span>
+              <span>Class {p.buildingClass}</span>
             </>
           )}
         </p>

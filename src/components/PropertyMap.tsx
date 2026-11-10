@@ -1,54 +1,144 @@
 "use client";
 
 import "leaflet/dist/leaflet.css";
+import "leaflet.markercluster/dist/MarkerCluster.css";
 import L from "leaflet";
-import Link from "next/link";
-import { useCallback, useEffect, useMemo, useRef } from "react";
-import { MapContainer, Marker, Popup, TileLayer, useMap } from "react-leaflet";
-import type { Property } from "@/lib/types";
-import { formatListingPrice, formatPinPrice, formatSize } from "@/lib/format";
+import "leaflet.markercluster";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { MapContainer, TileLayer, useMap } from "react-leaflet";
+import type { MapPin } from "@/lib/types";
 
-function pinIcon(p: Property, active: boolean) {
-  const classes = ["price-pin", p.listingType === "lease" ? "is-lease" : "", active ? "is-active" : ""]
+const escapeHtml = (s: string) =>
+  s.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]!);
+
+function pinIcon(pin: MapPin, active: boolean) {
+  const classes = ["price-pin", pin.listingType === "lease" ? "is-lease" : "", active ? "is-active" : ""]
     .filter(Boolean)
     .join(" ");
   return L.divIcon({
     className: classes,
-    html: `<span>${formatPinPrice(p)}</span>`,
+    html: `<span>${escapeHtml(pin.pinLabel)}</span>`,
     iconSize: [0, 0],
     iconAnchor: [0, 0],
     popupAnchor: [0, -26],
   });
 }
 
+function clusterIcon(cluster: L.MarkerCluster) {
+  const count = cluster.getChildCount();
+  const size = count < 10 ? 34 : count < 100 ? 40 : count < 1000 ? 48 : 56;
+  return L.divIcon({
+    className: "cluster-pin",
+    html: `<span style="width:${size}px;height:${size}px">${count}</span>`,
+    iconSize: [size, size],
+  });
+}
+
+function popupHtml(pin: MapPin) {
+  return `<a href="/properties/${encodeURIComponent(pin.id)}" class="map-popup">
+    <strong>${escapeHtml(pin.priceLabel)}</strong>
+    <span>${escapeHtml(pin.summary)}</span>
+    <span class="map-popup__title">${escapeHtml(pin.title)}</span>
+    <span class="map-popup__address">${escapeHtml(pin.address)}</span>
+    <span class="map-popup__cta">View details →</span>
+  </a>`;
+}
+
 /**
- * Fit the map to the results whenever they change, and re-measure when the
- * container is resized or shown (e.g. the mobile map/list toggle). If the last
- * fit happened while the map was hidden, fit again once it has a size.
+ * Clustered price pins. Leaflet.markercluster is imperative, so the markers are
+ * managed here rather than as React components.
  */
-function FitToProperties({ properties, maxZoom }: { properties: Property[]; maxZoom: number }) {
+function ClusteredPins({
+  pins,
+  activeId,
+  onHover,
+  showPopups,
+  maxZoom,
+}: {
+  pins: MapPin[];
+  activeId: string | null;
+  onHover?: (id: string | null) => void;
+  showPopups: boolean;
+  maxZoom: number;
+}) {
   const map = useMap();
-  const key = properties.map((p) => p.id).join(",");
-  const propertiesRef = useRef(properties);
-  propertiesRef.current = properties;
+  const markers = useRef(new Map<string, L.Marker>());
+  const onHoverRef = useRef(onHover);
+  const activeRef = useRef<string | null>(null);
   const fittedWhileHidden = useRef(false);
+  const pinsRef = useRef(pins);
+
+  useEffect(() => {
+    onHoverRef.current = onHover;
+  }, [onHover]);
 
   const fit = useCallback(() => {
-    const list = propertiesRef.current;
+    const list = pinsRef.current;
     fittedWhileHidden.current = map.getSize().x === 0;
     if (list.length === 0) return;
     if (list.length === 1) {
       map.setView([list[0].lat, list[0].lng], maxZoom);
       return;
     }
-    const bounds = L.latLngBounds(list.map((p) => [p.lat, p.lng] as [number, number]));
-    map.fitBounds(bounds, { padding: [48, 48], maxZoom });
+    map.fitBounds(L.latLngBounds(list.map((p) => [p.lat, p.lng] as [number, number])), {
+      padding: [40, 40],
+      maxZoom,
+    });
   }, [map, maxZoom]);
 
+  // Rebuild markers whenever the result set changes.
+  const key = useMemo(() => pins.map((p) => p.id).join(","), [pins]);
   useEffect(() => {
+    pinsRef.current = pins;
+    const group = L.markerClusterGroup({
+      showCoverageOnHover: false,
+      maxClusterRadius: 50,
+      iconCreateFunction: clusterIcon,
+      chunkedLoading: true,
+    });
+    markers.current.clear();
+    for (const pin of pins) {
+      const marker = L.marker([pin.lat, pin.lng], { icon: pinIcon(pin, false) });
+      marker.on("mouseover", () => onHoverRef.current?.(pin.id));
+      marker.on("mouseout", () => onHoverRef.current?.(null));
+      if (showPopups) marker.bindPopup(popupHtml(pin), { minWidth: 220, maxWidth: 260 });
+      markers.current.set(pin.id, marker);
+    }
+    group.addLayers([...markers.current.values()]);
+    map.addLayer(group);
+    activeRef.current = null;
     fit();
-  }, [key, fit]);
+    return () => {
+      map.removeLayer(group);
+    };
+    // `pins` is represented by `key`.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [key, map, showPopups, fit]);
 
+  // Highlight the hovered listing's pin.
+  useEffect(() => {
+    const byId = new Map(pinsRef.current.map((p) => [p.id, p]));
+    const prev = activeRef.current;
+    if (prev && prev !== activeId) {
+      const pin = byId.get(prev);
+      const marker = markers.current.get(prev);
+      if (pin && marker) {
+        marker.setIcon(pinIcon(pin, false));
+        marker.setZIndexOffset(0);
+      }
+    }
+    if (activeId) {
+      const pin = byId.get(activeId);
+      const marker = markers.current.get(activeId);
+      if (pin && marker) {
+        marker.setIcon(pinIcon(pin, true));
+        marker.setZIndexOffset(1000);
+      }
+    }
+    activeRef.current = activeId;
+  }, [activeId, key]);
+
+  // Re-measure when the container is resized or shown (mobile map/list toggle).
   useEffect(() => {
     const observer = new ResizeObserver(() => {
       map.invalidateSize();
@@ -62,7 +152,7 @@ function FitToProperties({ properties, maxZoom }: { properties: Property[]; maxZ
 }
 
 export interface PropertyMapProps {
-  properties: Property[];
+  pins: MapPin[];
   activeId?: string | null;
   onHover?: (id: string | null) => void;
   /** Disable popups (used on the detail page). */
@@ -72,61 +162,30 @@ export interface PropertyMapProps {
 }
 
 export default function PropertyMap({
-  properties,
+  pins,
   activeId = null,
   onHover,
   showPopups = true,
-  maxZoom = 13,
+  maxZoom = 14,
   className = "h-full w-full",
 }: PropertyMapProps) {
-  const center = useMemo<[number, number]>(
-    () => (properties[0] ? [properties[0].lat, properties[0].lng] : [39.5, -98.35]),
-    // Only used for the initial render; FitToProperties handles later changes.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [],
+  const [center] = useState<[number, number]>(() =>
+    pins[0] ? [pins[0].lat, pins[0].lng] : [40, -115],
   );
 
   return (
-    <MapContainer
-      center={center}
-      zoom={properties.length ? 11 : 4}
-      scrollWheelZoom
-      className={className}
-    >
+    <MapContainer center={center} zoom={pins.length ? 10 : 4} scrollWheelZoom className={className}>
       <TileLayer
         attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
         url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
       />
-      <FitToProperties properties={properties} maxZoom={maxZoom} />
-      {properties.map((p) => (
-        <Marker
-          key={p.id}
-          position={[p.lat, p.lng]}
-          icon={pinIcon(p, p.id === activeId)}
-          zIndexOffset={p.id === activeId ? 1000 : 0}
-          eventHandlers={{
-            mouseover: () => onHover?.(p.id),
-            mouseout: () => onHover?.(null),
-          }}
-        >
-          {showPopups && (
-            <Popup>
-              <Link href={`/properties/${p.id}`} className="block p-3 !text-ink no-underline">
-                <span className="block text-base font-bold">{formatListingPrice(p)}</span>
-                <span className="block text-sm">
-                  {p.type} · {formatSize(p)}
-                  {p.capRate !== null ? ` · ${p.capRate.toFixed(2)}% cap` : ""}
-                </span>
-                <span className="mt-1 block truncate text-sm font-medium">{p.title}</span>
-                <span className="block truncate text-xs text-slate-500">
-                  {p.address}, {p.city}, {p.state}
-                </span>
-                <span className="mt-2 block text-sm font-semibold !text-brand-700">View details →</span>
-              </Link>
-            </Popup>
-          )}
-        </Marker>
-      ))}
+      <ClusteredPins
+        pins={pins}
+        activeId={activeId}
+        onHover={onHover}
+        showPopups={showPopups}
+        maxZoom={maxZoom}
+      />
     </MapContainer>
   );
 }

@@ -16,6 +16,10 @@ const usdCents = new Intl.NumberFormat("en-US", {
 export const formatCurrency = (value: number) => usd.format(value);
 export const formatNumber = (value: number) => value.toLocaleString("en-US");
 
+function trim(value: number, digits: number): string {
+  return value.toFixed(digits).replace(/\.?0+$/, "");
+}
+
 /** $1.25M, $850K, etc. */
 export function formatCompactCurrency(value: number): string {
   if (value >= 1_000_000_000) return `$${trim(value / 1_000_000_000, 2)}B`;
@@ -24,12 +28,9 @@ export function formatCompactCurrency(value: number): string {
   return usd.format(value);
 }
 
-function trim(value: number, digits: number): string {
-  return value.toFixed(digits).replace(/\.?0+$/, "");
-}
-
+/** Lease rates are $/SF per month. */
 export function formatLeaseRate(rate: number): string {
-  return `${usdCents.format(rate)}/SF/yr`;
+  return `${usdCents.format(rate)}/SF/mo`;
 }
 
 /** Headline price for a card or detail page. */
@@ -43,25 +44,19 @@ export function formatListingPrice(p: Property): string {
 /** Short label used on map pins. */
 export function formatPinPrice(p: Property): string {
   if (p.listingType === "lease") {
-    return p.leaseRate !== null ? `$${trim(p.leaseRate, 2)}/SF` : "Lease";
+    return p.leaseRate !== null ? `$${p.leaseRate.toFixed(2)}/SF` : "Lease";
   }
   return p.price !== null ? formatCompactCurrency(p.price) : "Sale";
 }
 
 export function formatSize(p: Property): string {
-  if (p.type === "Land") return `${p.lotSizeAcres.toFixed(2)} AC`;
-  const size = p.listingType === "lease" ? p.availableSize : p.buildingSize;
-  return size !== null ? `${formatNumber(size)} SF` : "—";
+  if (p.lotSizeAcres !== null && p.size === null) return `${formatNumber(p.lotSizeAcres)} AC`;
+  return p.size !== null ? `${formatNumber(p.size)} SF` : "Size n/a";
 }
 
 export function pricePerSquareFoot(p: Property): number | null {
-  if (p.listingType !== "sale" || p.price === null || !p.buildingSize) return null;
-  return p.price / p.buildingSize;
-}
-
-export function daysOnMarket(listedAt: string, now = new Date()): number {
-  const listed = new Date(`${listedAt}T00:00:00Z`).getTime();
-  return Math.max(0, Math.floor((now.getTime() - listed) / 86_400_000));
+  if (p.listingType !== "sale" || p.price === null || !p.size) return null;
+  return p.price / p.size;
 }
 
 export function fullAddress(p: Property): string {

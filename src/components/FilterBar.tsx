@@ -12,9 +12,8 @@ import { formatCompactCurrency, formatNumber } from "@/lib/format";
 import { PROPERTY_TYPES, type PropertyFilters, type PropertyType } from "@/lib/types";
 
 const SALE_PRICES = [250_000, 500_000, 1_000_000, 2_000_000, 5_000_000, 10_000_000, 25_000_000, 50_000_000];
-const LEASE_RATES = [10, 15, 20, 25, 30, 40, 50];
+const LEASE_RATES = [0.5, 0.75, 1, 1.5, 2, 2.5, 3, 4, 5];
 const SIZES = [2_500, 5_000, 10_000, 25_000, 50_000, 100_000, 250_000];
-const CAP_RATES = [4, 5, 6, 7, 8];
 
 function Dropdown({
   label,
@@ -123,7 +122,8 @@ export default function FilterBar({ resultCount }: { resultCount: number }) {
   useEffect(() => setQuery(urlFilters.q), [urlFilters.q]);
 
   const apply = (next: Partial<PropertyFilters>) => {
-    const merged = { ...filters, ...next };
+    // Any filter change starts again from the first page of results.
+    const merged = { ...filters, page: 1, ...next };
     const qs = filtersToSearchParams(merged).toString();
     startTransition(() => {
       setOptimisticFilters(merged);
@@ -132,7 +132,7 @@ export default function FilterBar({ resultCount }: { resultCount: number }) {
   };
 
   const isLease = filters.listingType === "lease";
-  const priceFormat = isLease ? (n: number) => `$${n}/SF/yr` : formatCompactCurrency;
+  const priceFormat = isLease ? (n: number) => `$${n.toFixed(2)}/SF/mo` : formatCompactCurrency;
   const priceActive = filters.minPrice !== null || filters.maxPrice !== null;
   const sizeActive = filters.minSize !== null || filters.maxSize !== null;
   const activeCount = countActiveFilters(filters);
@@ -205,8 +205,6 @@ export default function FilterBar({ resultCount }: { resultCount: number }) {
                   listingType: lt,
                   minPrice: null,
                   maxPrice: null,
-                  minCapRate: null,
-                  sort: filters.sort === "cap-desc" ? "newest" : filters.sort,
                 })
               }
               className={`rounded-md px-3 py-1.5 text-sm font-medium ${
@@ -241,7 +239,7 @@ export default function FilterBar({ resultCount }: { resultCount: number }) {
           label={rangeLabel(filters.minPrice, filters.maxPrice, priceFormat, isLease ? "Rate" : "Price")}
           active={priceActive}
         >
-          <p className="mb-2 text-sm font-semibold text-ink">{isLease ? "Lease rate ($/SF/yr)" : "Asking price"}</p>
+          <p className="mb-2 text-sm font-semibold text-ink">{isLease ? "Lease rate ($/SF/month)" : "Asking price"}</p>
           <div className="flex gap-2">
             <RangeSelect
               label="Min"
@@ -290,31 +288,6 @@ export default function FilterBar({ resultCount }: { resultCount: number }) {
           <p className="mt-2 text-xs text-slate-500">Land listings are excluded when a size is set.</p>
         </Dropdown>
 
-        {!isLease && (
-          <Dropdown
-            label={filters.minCapRate !== null ? `${filters.minCapRate}%+ cap` : "Cap rate"}
-            active={filters.minCapRate !== null}
-          >
-            <p className="mb-2 text-sm font-semibold text-ink">Minimum cap rate</p>
-            <div className="flex flex-wrap gap-2">
-              {[null, ...CAP_RATES].map((rate) => (
-                <button
-                  key={rate ?? "any"}
-                  type="button"
-                  onClick={() => apply({ minCapRate: rate })}
-                  className={`rounded-lg border px-3 py-1.5 text-sm ${
-                    filters.minCapRate === rate
-                      ? "border-brand-600 bg-brand-50 font-semibold text-brand-800"
-                      : "border-slate-300 text-slate-700 hover:border-slate-400"
-                  }`}
-                >
-                  {rate === null ? "Any" : `${rate}%+`}
-                </button>
-              ))}
-            </div>
-          </Dropdown>
-        )}
-
         {(activeCount > 0 || filters.q) && (
           <button
             type="button"
@@ -329,7 +302,7 @@ export default function FilterBar({ resultCount }: { resultCount: number }) {
         )}
 
         <span className="ml-auto text-sm text-slate-500" aria-live="polite">
-          {isPending ? "Updating…" : `${resultCount} ${resultCount === 1 ? "listing" : "listings"}`}
+          {isPending ? "Updating…" : `${resultCount.toLocaleString()} ${resultCount === 1 ? "listing" : "listings"}`}
         </span>
       </div>
     </div>

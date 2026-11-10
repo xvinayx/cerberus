@@ -1,30 +1,27 @@
 export const PROPERTY_TYPES = [
   "Office",
-  "Retail",
   "Industrial",
-  "Multifamily",
-  "Hospitality",
-  "Mixed Use",
+  "Retail",
   "Land",
+  "Multifamily",
+  "Healthcare",
+  "Life Science",
+  "Hospitality",
+  "Educational",
+  "Religious",
+  "Other",
 ] as const;
 
 export type PropertyType = (typeof PROPERTY_TYPES)[number];
 
 export type ListingType = "sale" | "lease";
 
-export type BuildingClass = "A" | "B" | "C";
-
-export interface Broker {
-  name: string;
-  company: string;
-  phone: string;
-  email: string;
-}
-
 export interface Property {
   id: string;
   title: string;
   type: PropertyType;
+  /** Finer-grained use, e.g. "Warehouse Office" or "Neighborhood Center". */
+  subtype: string | null;
   listingType: ListingType;
   address: string;
   city: string;
@@ -33,51 +30,50 @@ export interface Property {
   lat: number;
   lng: number;
 
-  /** Sale listings: asking price in USD. */
+  /** Sale listings: asking price in USD (null = contact broker). */
   price: number | null;
-  /** Lease listings: asking rent in USD per square foot per year. */
+  /** Lease listings: asking rent in USD per square foot per month (null = contact broker). */
   leaseRate: number | null;
-  /** Sale listings: net operating income in USD per year (null for land / vacant). */
-  noi: number | null;
-  /** Sale listings: cap rate as a percentage, e.g. 6.25. */
-  capRate: number | null;
+  /** Square feet: building size for sales, space available for leases. Null for land. */
+  size: number | null;
+  /** Land listings: lot size in acres. */
+  lotSizeAcres: number | null;
+  buildingClass: string | null;
+  sublease: boolean;
+  netLease: boolean;
 
-  /** Building size in square feet (null for land). */
-  buildingSize: number | null;
-  /** Lease listings: square feet available. */
-  availableSize: number | null;
-  lotSizeAcres: number;
-  yearBuilt: number | null;
-  buildingClass: BuildingClass | null;
-  occupancy: number | null;
-  floors: number | null;
-  units: number | null;
-  rooms: number | null;
-  parkingSpaces: number | null;
-  zoning: string;
-
-  listedAt: string; // ISO date
-  description: string;
-  highlights: string[];
-  broker: Broker;
+  photoUrl: string | null;
+  brokers: string[];
+  /** The listing on the source website. */
+  sourceUrl: string;
+  /** Higher = listed more recently. */
+  recency: number;
 }
 
-export type SortOption =
-  | "newest"
-  | "price-asc"
-  | "price-desc"
-  | "size-desc"
-  | "cap-desc";
+export type SortOption = "newest" | "price-asc" | "price-desc" | "size-desc";
 
 export interface PropertyFilters {
   listingType: ListingType;
   types: PropertyType[];
   q: string;
-  /** Sale: price in USD. Lease: rate in $/SF/yr. */
+  /** Sale: price in USD. Lease: rent in $/SF/month. */
   minPrice: number | null;
   maxPrice: number | null;
   minSize: number | null;
   maxSize: number | null;
-  minCapRate: number | null;
   sort: SortOption;
+  page: number;
+}
+
+/** Slim data sent to the map, so the browser doesn't download every listing field. */
+export interface MapPin {
+  id: string;
+  lat: number;
+  lng: number;
+  listingType: ListingType;
+  pinLabel: string;
+  priceLabel: string;
+  summary: string;
+  title: string;
+  address: string;
 }

@@ -1,12 +1,10 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import ContactForm from "@/components/ContactForm";
+import ListingPhoto from "@/components/ListingPhoto";
 import MapLoader from "@/components/MapLoader";
 import PropertyCard from "@/components/PropertyCard";
-import PropertyImage from "@/components/PropertyImage";
 import {
-  daysOnMarket,
   formatCurrency,
   formatListingPrice,
   formatNumber,
@@ -14,71 +12,58 @@ import {
   fullAddress,
   pricePerSquareFoot,
 } from "@/lib/format";
-import { getNearbyProperties, getPropertyById } from "@/lib/properties";
+import { DATA_SOURCE, getNearbyProperties, getPropertyById, toMapPin } from "@/lib/properties";
 import type { Property } from "@/lib/types";
 
 type Params = Promise<{ id: string }>;
 
+// Kidder Mathews' main line, as published on kidder.com.
+const SOURCE_PHONE = { display: "877.454.3337", tel: "8774543337" };
+
 export async function generateMetadata({ params }: { params: Params }): Promise<Metadata> {
   const property = getPropertyById((await params).id);
   if (!property) return { title: "Listing not found" };
+  const kind = property.listingType === "lease" ? "for lease" : "for sale";
   return {
-    title: `${property.title} — ${property.type} ${property.listingType === "lease" ? "for lease" : "for sale"} in ${property.city}, ${property.state}`,
-    description: property.description,
+    title: `${property.title} — ${property.type} ${kind} in ${property.city}, ${property.state}`,
+    description: `${property.type} ${kind} at ${fullAddress(property)}. ${formatListingPrice(property)}, ${formatSize(property)}.`,
   };
-}
-
-function Fact({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="flex justify-between gap-4 border-b border-slate-100 py-2.5 text-sm">
-      <dt className="text-slate-500">{label}</dt>
-      <dd className="text-right font-medium text-ink">{value}</dd>
-    </div>
-  );
 }
 
 function keyStats(p: Property): { label: string; value: string }[] {
   const stats: { label: string; value: string }[] = [];
   if (p.listingType === "sale") {
     const ppsf = pricePerSquareFoot(p);
-    if (p.capRate !== null) stats.push({ label: "Cap rate", value: `${p.capRate.toFixed(2)}%` });
-    if (p.noi !== null) stats.push({ label: "NOI", value: formatCurrency(p.noi) });
+    if (p.size !== null) stats.push({ label: "Building size", value: `${formatNumber(p.size)} SF` });
     if (ppsf !== null) stats.push({ label: "Price / SF", value: `$${formatNumber(Math.round(ppsf))}` });
-    if (p.type === "Land") {
-      stats.push({ label: "Price / acre", value: formatCurrency(Math.round((p.price ?? 0) / p.lotSizeAcres)) });
+    if (p.lotSizeAcres !== null) stats.push({ label: "Lot size", value: `${formatNumber(p.lotSizeAcres)} AC` });
+    if (p.lotSizeAcres && p.price) {
+      stats.push({ label: "Price / acre", value: formatCurrency(Math.round(p.price / p.lotSizeAcres)) });
     }
   } else {
-    if (p.availableSize !== null) stats.push({ label: "Available", value: `${formatNumber(p.availableSize)} SF` });
-    if (p.leaseRate !== null && p.availableSize !== null) {
-      stats.push({
-        label: "Est. annual rent",
-        value: formatCurrency(Math.round(p.leaseRate * p.availableSize)),
-      });
+    if (p.size !== null) stats.push({ label: "Available", value: `${formatNumber(p.size)} SF` });
+    if (p.leaseRate !== null && p.size !== null) {
+      stats.push({ label: "Est. monthly rent", value: formatCurrency(Math.round(p.leaseRate * p.size)) });
+      stats.push({ label: "Est. annual rent", value: formatCurrency(Math.round(p.leaseRate * p.size * 12)) });
     }
+    if (p.lotSizeAcres !== null) stats.push({ label: "Lot size", value: `${formatNumber(p.lotSizeAcres)} AC` });
   }
-  if (p.buildingSize !== null) stats.push({ label: "Building size", value: `${formatNumber(p.buildingSize)} SF` });
-  stats.push({ label: "Lot size", value: `${p.lotSizeAcres.toFixed(2)} AC` });
+  if (p.buildingClass) stats.push({ label: "Building class", value: `Class ${p.buildingClass}` });
   return stats.slice(0, 4);
 }
 
-function buildingFacts(p: Property): { label: string; value: string }[] {
-  const facts: [string, string | null][] = [
+function facts(p: Property): { label: string; value: string }[] {
+  const rows: [string, string | null][] = [
     ["Property type", p.type],
-    ["Listing type", p.listingType === "lease" ? "For lease" : "For sale"],
+    ["Use", p.subtype],
+    ["Listing type", p.listingType === "lease" ? (p.sublease ? "Sublease" : "For lease") : "For sale"],
+    ["Net lease investment", p.netLease ? "Yes" : null],
     ["Building class", p.buildingClass ? `Class ${p.buildingClass}` : null],
-    ["Building size", p.buildingSize !== null ? `${formatNumber(p.buildingSize)} SF` : null],
-    ["Space available", p.availableSize !== null ? `${formatNumber(p.availableSize)} SF` : null],
-    ["Lot size", `${p.lotSizeAcres.toFixed(2)} acres`],
-    ["Year built", p.yearBuilt !== null ? String(p.yearBuilt) : null],
-    ["Floors", p.floors !== null ? String(p.floors) : null],
-    ["Units", p.units !== null ? String(p.units) : null],
-    ["Rooms", p.rooms !== null ? String(p.rooms) : null],
-    ["Occupancy", p.occupancy !== null ? `${p.occupancy}%` : null],
-    ["Parking", p.parkingSpaces !== null ? `${formatNumber(p.parkingSpaces)} spaces` : null],
-    ["Zoning", p.zoning],
-    ["Days on market", String(daysOnMarket(p.listedAt))],
+    [p.listingType === "lease" ? "Space available" : "Building size", p.size !== null ? `${formatNumber(p.size)} SF` : null],
+    ["Lot size", p.lotSizeAcres !== null ? `${formatNumber(p.lotSizeAcres)} acres` : null],
+    ["Asking", formatListingPrice(p)],
   ];
-  return facts.filter((f): f is [string, string] => f[1] !== null).map(([label, value]) => ({ label, value }));
+  return rows.filter((r): r is [string, string] => r[1] !== null).map(([label, value]) => ({ label, value }));
 }
 
 export default async function PropertyPage({ params }: { params: Params }) {
@@ -89,6 +74,7 @@ export default async function PropertyPage({ params }: { params: Params }) {
   const p = property;
   const nearby = getNearbyProperties(p);
   const backHref = p.listingType === "lease" ? "/?listing=lease" : "/";
+  const stats = keyStats(p);
 
   return (
     <main className="mx-auto w-full max-w-6xl px-4 py-6 sm:px-6">
@@ -102,7 +88,7 @@ export default async function PropertyPage({ params }: { params: Params }) {
           <li aria-hidden="true">/</li>
           <li>
             <Link
-              href={`${backHref}${backHref.includes("?") ? "&" : "?"}q=${encodeURIComponent(`${p.city}, ${p.state}`)}`}
+              href={`${backHref}${backHref.includes("?") ? "&" : "?"}q=${encodeURIComponent(`${p.city} ${p.state}`)}`}
               className="hover:text-brand-700 hover:underline"
             >
               {p.city}, {p.state}
@@ -113,12 +99,18 @@ export default async function PropertyPage({ params }: { params: Params }) {
         </ol>
       </nav>
 
-      {/* Gallery */}
-      <div className="grid gap-2 overflow-hidden rounded-2xl sm:grid-cols-4 sm:grid-rows-2">
-        <PropertyImage id={p.id} type={p.type} className="aspect-[16/10] h-full w-full sm:col-span-2 sm:row-span-2" />
-        {[1, 2, 3, 4].map((v) => (
-          <PropertyImage key={v} id={p.id} type={p.type} variant={v} className="hidden aspect-[16/10] h-full w-full sm:block" />
-        ))}
+      <div className="grid gap-2 overflow-hidden rounded-2xl md:grid-cols-[2fr_1fr]">
+        <ListingPhoto
+          id={p.id}
+          type={p.type}
+          src={p.photoUrl}
+          alt={p.title}
+          priority
+          className="aspect-[16/10] h-full max-h-[28rem] w-full"
+        />
+        <div className="hidden h-full min-h-56 md:block">
+          <MapLoader pins={[toMapPin(p)]} activeId={p.id} showPopups={false} maxZoom={15} />
+        </div>
       </div>
 
       <div className="mt-6 grid gap-8 lg:grid-cols-[1fr_22rem]">
@@ -129,89 +121,101 @@ export default async function PropertyPage({ params }: { params: Params }) {
                 p.listingType === "lease" ? "bg-slate-700" : "bg-brand-700"
               }`}
             >
-              {p.listingType === "lease" ? "For Lease" : "For Sale"}
+              {p.listingType === "lease" ? (p.sublease ? "Sublease" : "For Lease") : "For Sale"}
             </span>
             <span className="rounded bg-slate-100 px-2 py-0.5 text-xs font-semibold text-slate-700">{p.type}</span>
-            {p.buildingClass && (
-              <span className="rounded bg-slate-100 px-2 py-0.5 text-xs font-semibold text-slate-700">
-                Class {p.buildingClass}
-              </span>
+            {p.subtype && (
+              <span className="rounded bg-slate-100 px-2 py-0.5 text-xs font-semibold text-slate-700">{p.subtype}</span>
             )}
           </div>
           <h1 className="mt-2 text-2xl font-bold text-ink sm:text-3xl">{p.title}</h1>
           <p className="mt-1 text-slate-600">{fullAddress(p)}</p>
 
           <p className="mt-4 text-3xl font-bold text-ink">{formatListingPrice(p)}</p>
-          <p className="text-sm text-slate-500">
-            {formatSize(p)} · Listed {daysOnMarket(p.listedAt)} days ago
-          </p>
+          <p className="text-sm text-slate-500">{formatSize(p)}</p>
 
-          <dl className="mt-6 grid grid-cols-2 gap-px overflow-hidden rounded-xl border border-slate-200 bg-slate-200 sm:grid-cols-4">
-            {keyStats(p).map((s) => (
-              <div key={s.label} className="bg-white p-4">
-                <dt className="text-xs font-medium uppercase tracking-wide text-slate-500">{s.label}</dt>
-                <dd className="mt-1 text-lg font-bold text-ink">{s.value}</dd>
-              </div>
-            ))}
-          </dl>
-
-          <section className="mt-8">
-            <h2 className="text-lg font-bold text-ink">About this property</h2>
-            <p className="mt-2 leading-relaxed text-slate-700">{p.description}</p>
-            <ul className="mt-4 grid gap-2 sm:grid-cols-2">
-              {p.highlights.map((h) => (
-                <li key={h} className="flex gap-2 text-sm text-slate-700">
-                  <svg viewBox="0 0 20 20" className="mt-0.5 h-4 w-4 flex-none text-brand-600" aria-hidden="true">
-                    <path d="M4 10.5l4 4 8-9" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
-                  </svg>
-                  {h}
-                </li>
+          {stats.length > 0 && (
+            <dl
+              className={`mt-6 grid grid-cols-2 gap-px overflow-hidden rounded-xl border border-slate-200 bg-slate-200 ${
+                stats.length >= 4 ? "sm:grid-cols-4" : stats.length === 3 ? "sm:grid-cols-3" : ""
+              }`}
+            >
+              {stats.map((s) => (
+                <div key={s.label} className="bg-white p-4">
+                  <dt className="text-xs font-medium uppercase tracking-wide text-slate-500">{s.label}</dt>
+                  <dd className="mt-1 text-lg font-bold text-ink">{s.value}</dd>
+                </div>
               ))}
-            </ul>
-          </section>
+            </dl>
+          )}
 
           <section className="mt-8">
             <h2 className="text-lg font-bold text-ink">Property facts</h2>
             <dl className="mt-2 grid gap-x-8 sm:grid-cols-2">
-              {buildingFacts(p).map((f) => (
-                <Fact key={f.label} label={f.label} value={f.value} />
+              {facts(p).map((f) => (
+                <div key={f.label} className="flex justify-between gap-4 border-b border-slate-100 py-2.5 text-sm">
+                  <dt className="text-slate-500">{f.label}</dt>
+                  <dd className="text-right font-medium text-ink">{f.value}</dd>
+                </div>
               ))}
             </dl>
           </section>
 
-          <section className="mt-8">
+          <section className="mt-8 md:hidden">
             <h2 className="text-lg font-bold text-ink">Location</h2>
-            <div className="mt-3 h-72 overflow-hidden rounded-xl border border-slate-200">
-              <MapLoader properties={[p]} activeId={p.id} showPopups={false} maxZoom={14} />
+            <div className="mt-3 h-64 overflow-hidden rounded-xl border border-slate-200">
+              <MapLoader pins={[toMapPin(p)]} activeId={p.id} showPopups={false} maxZoom={15} />
             </div>
           </section>
         </div>
 
         <aside className="lg:sticky lg:top-20 lg:self-start">
           <div className="rounded-2xl border border-slate-200 p-5 shadow-sm">
-            <div className="mb-4 flex items-center gap-3">
-              <div className="flex h-12 w-12 flex-none items-center justify-center rounded-full bg-brand-100 text-base font-bold text-brand-800">
-                {p.broker.name
-                  .split(" ")
-                  .map((n) => n[0])
-                  .join("")}
-              </div>
-              <div className="min-w-0">
-                <p className="font-semibold text-ink">{p.broker.name}</p>
-                <p className="truncate text-sm text-slate-500">{p.broker.company}</p>
-                <a href={`tel:${p.broker.phone.replace(/[^\d]/g, "")}`} className="text-sm text-brand-700 hover:underline">
-                  {p.broker.phone}
-                </a>
-              </div>
-            </div>
-            <ContactForm propertyId={p.id} propertyTitle={p.title} brokerName={p.broker.name} />
+            <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-500">
+              Listing {p.brokers.length === 1 ? "broker" : "brokers"}
+            </h2>
+            <ul className="mt-3 space-y-3">
+              {p.brokers.map((name) => (
+                <li key={name} className="flex items-center gap-3">
+                  <span className="flex h-10 w-10 flex-none items-center justify-center rounded-full bg-brand-100 text-sm font-bold text-brand-800">
+                    {name
+                      .split(" ")
+                      .map((n) => n[0])
+                      .join("")
+                      .slice(0, 2)}
+                  </span>
+                  <span className="font-medium text-ink">{name}</span>
+                </li>
+              ))}
+            </ul>
+            <p className="mt-3 text-sm text-slate-500">{DATA_SOURCE.name}</p>
+
+            <a
+              href={p.sourceUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="mt-5 block w-full rounded-lg bg-brand-700 px-4 py-2.5 text-center text-sm font-semibold text-white hover:bg-brand-800"
+            >
+              View listing &amp; contact broker ↗
+            </a>
+            <a
+              href={`tel:${SOURCE_PHONE.tel}`}
+              className="mt-2 block w-full rounded-lg border border-slate-300 px-4 py-2.5 text-center text-sm font-semibold text-ink hover:border-slate-400"
+            >
+              Call {SOURCE_PHONE.display}
+            </a>
+            <p className="mt-3 text-xs text-slate-400">
+              Brochures, floor plans, and broker contact details are on {DATA_SOURCE.name}’ site.
+            </p>
           </div>
         </aside>
       </div>
 
       {nearby.length > 0 && (
         <section className="mt-12">
-          <h2 className="text-lg font-bold text-ink">More listings near {p.city}</h2>
+          <h2 className="text-lg font-bold text-ink">
+            More {p.listingType === "lease" ? "for lease" : "for sale"} near {p.city}
+          </h2>
           <ul className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             {nearby.map((n) => (
               <li key={n.id}>
@@ -223,7 +227,8 @@ export default async function PropertyPage({ params }: { params: Params }) {
       )}
 
       <p className="mt-12 border-t border-slate-200 pt-6 text-xs text-slate-400">
-        Sample listing for demonstration. All properties, prices, and brokers shown are fictional.
+        Listing courtesy of {DATA_SOURCE.name}. Information is deemed reliable but not guaranteed; confirm all
+        details with the listing broker.
       </p>
     </main>
   );
