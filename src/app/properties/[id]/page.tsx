@@ -118,7 +118,7 @@ export default async function PropertyPage({ params }: { params: Params }) {
           <div className="flex flex-wrap items-center gap-2">
             <span
               className={`rounded px-2 py-0.5 text-xs font-semibold text-white ${
-                p.listingType === "lease" ? "bg-slate-700" : "bg-brand-700"
+                p.listingType === "lease" ? "bg-lease" : "bg-brand-700"
               }`}
             >
               {p.listingType === "lease" ? (p.sublease ? "Sublease" : "For Lease") : "For Sale"}

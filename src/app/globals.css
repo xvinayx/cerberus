@@ -2,13 +2,15 @@
 
 @theme {
   --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-  --color-brand-50: #effaf7;
-  --color-brand-100: #d7f2ea;
-  --color-brand-500: #14a383;
-  --color-brand-600: #0d8a6f;
-  --color-brand-700: #0b6e5a;
-  --color-brand-800: #0c5849;
-  --color-ink: #13202b;
+  /* "Pacific Teal" palette */
+  --color-brand-50: #ebf6fa;
+  --color-brand-100: #d3ecf4;
+  --color-brand-500: #1689ad;
+  --color-brand-600: #0d7a9c;
+  --color-brand-700: #0a6c8a; /* primary: buttons, sale badges, pins, logo */
+  --color-brand-800: #08566e; /* hover, selected-chip text */
+  --color-lease: #454d57; /* lease badges and pins */
+  --color-ink: #122028;
 }
 
 html,
@@ -41,7 +43,7 @@ body {
   transition: transform 120ms ease, background 120ms ease;
 }
 .price-pin.is-lease span {
-  background: #3d4f63;
+  background: var(--color-lease);
 }
 .price-pin.is-active span {
   background: var(--color-ink);
@@ -73,7 +75,7 @@ body {
   color: #fff;
   background: var(--color-brand-700);
   border: 3px solid rgb(255 255 255 / 0.9);
-  box-shadow: 0 0 0 4px rgb(11 110 90 / 0.25), 0 1px 4px rgb(0 0 0 / 0.3);
+  box-shadow: 0 0 0 4px rgb(10 108 138 / 0.25), 0 1px 4px rgb(0 0 0 / 0.3);
 }
 
 /* Map popup card */

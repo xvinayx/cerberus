@@ -68,12 +68,12 @@ function Building({ type, facade, lit, seed }: { type: PropertyType; facade: str
           <rect x="50" y="128" width="300" height="14" fill="#2f3e4d" />
           {[0, 1, 2, 3, 4].map((i) => (
             <g key={i}>
-              <path d={`M${58 + i * 58} 150 h50 l-6 14 h-38 z`} fill={i % 2 ? "#0d8a6f" : "#e8eef2"} />
+              <path d={`M${58 + i * 58} 150 h50 l-6 14 h-38 z`} fill={i % 2 ? "#1689ad" : "#e8eef2"} />
               <rect x={62 + i * 58} y="168" width="42" height="40" fill={lit ? "#fde68a" : "#c9dbe6"} opacity="0.85" />
             </g>
           ))}
           <rect x="300" y="70" width="14" height="70" fill="#2f3e4d" />
-          <rect x="285" y="60" width="44" height="22" rx="3" fill="#0d8a6f" />
+          <rect x="285" y="60" width="44" height="22" rx="3" fill="#1689ad" />
         </g>
       );
     case "Industrial":
@@ -124,7 +124,7 @@ function Building({ type, facade, lit, seed }: { type: PropertyType; facade: str
           {[0, 1, 2, 3].map((i) => (
             <rect key={i} x={92 + i * 58} y="178" width="46" height="37" fill={lit ? "#fde68a" : "#c9dbe6"} opacity="0.9" />
           ))}
-          <rect x="70" y="164" width="260" height="8" fill="#0d8a6f" />
+          <rect x="70" y="164" width="260" height="8" fill="#1689ad" />
         </g>
       );
     case "Land":
@@ -140,7 +140,7 @@ function Building({ type, facade, lit, seed }: { type: PropertyType; facade: str
           ))}
           <rect x="190" y="150" width="4" height="50" fill="#5c4632" />
           <rect x="160" y="132" width="64" height="26" rx="2" fill="#ffffff" stroke="#2f3e4d" strokeWidth="2" />
-          <rect x="168" y="140" width="48" height="4" fill="#0d8a6f" />
+          <rect x="168" y="140" width="48" height="4" fill="#1689ad" />
           <rect x="168" y="148" width="32" height="3" fill="#94a3b8" />
         </g>
       );
