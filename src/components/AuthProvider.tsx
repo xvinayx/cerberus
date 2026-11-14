@@ -1,9 +1,10 @@
 "use client";
 
-import type { User } from "@supabase/supabase-js";
+import type { SupabaseClient, User } from "@supabase/supabase-js";
 import { useRouter } from "next/navigation";
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import { createClient } from "@/lib/supabase/client";
+import type { SupabaseConfig } from "@/lib/supabase/config";
 
 interface AuthState {
   /** False when Supabase isn't configured: hide sign-in and hearts. */
@@ -15,6 +16,8 @@ interface AuthState {
   /** Hearts or un-hearts a listing; sends signed-out visitors to sign in. */
   toggleSaved: (propertyId: string) => Promise<void>;
   error: string | null;
+  /** Browser Supabase client; null when sign-in is disabled. */
+  supabase: SupabaseClient | null;
 }
 
 const AuthContext = createContext<AuthState>({
@@ -24,13 +27,16 @@ const AuthContext = createContext<AuthState>({
   isSaved: () => false,
   toggleSaved: async () => {},
   error: null,
+  supabase: null,
 });
 
 export const useAuth = () => useContext(AuthContext);
 
-export default function AuthProvider({ children }: { children: ReactNode }) {
+export default function AuthProvider({ config, children }: { config: SupabaseConfig; children: ReactNode }) {
   const router = useRouter();
-  const supabase = useMemo(() => createClient(), []);
+  // The URL and key don't change while the page is open.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const supabase = useMemo(() => createClient(config), []);
   const [user, setUser] = useState<User | null>(null);
   const [ready, setReady] = useState(false);
   const [saved, setSaved] = useState<Set<string>>(() => new Set());
@@ -101,8 +107,8 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
   );
 
   const value = useMemo<AuthState>(
-    () => ({ enabled: true, ready, user, isSaved, toggleSaved, error }),
-    [ready, user, isSaved, toggleSaved, error],
+    () => ({ enabled: true, ready, user, isSaved, toggleSaved, error, supabase }),
+    [ready, user, isSaved, toggleSaved, error, supabase],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

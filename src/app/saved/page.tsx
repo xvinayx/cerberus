@@ -3,13 +3,16 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import PropertyCard from "@/components/PropertyCard";
 import { getPropertyById } from "@/lib/properties";
-import { authEnabled } from "@/lib/supabase/config";
+import { isAuthEnabled } from "@/lib/supabase/config";
 import { createClient } from "@/lib/supabase/server";
+
+// Depends on who is signed in and on runtime settings: never pre-build it.
+export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = { title: "Saved properties" };
 
 export default async function SavedPage() {
-  if (!authEnabled) notFound();
+  if (!isAuthEnabled()) notFound();
   const supabase = await createClient();
   const { data: auth } = await supabase.auth.getUser();
   if (!auth.user) redirect("/login?next=/saved");

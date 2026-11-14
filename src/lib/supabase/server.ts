@@ -1,12 +1,13 @@
 import "server-only";
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
-import { SUPABASE_KEY, SUPABASE_URL } from "./config";
+import { getSupabaseConfig } from "./config";
 
 /** Supabase client for server components, route handlers and server actions. Create one per request. */
 export async function createClient() {
   const cookieStore = await cookies();
-  return createServerClient(SUPABASE_URL, SUPABASE_KEY, {
+  const { url, key } = getSupabaseConfig();
+  return createServerClient(url, key, {
     cookies: {
       getAll() {
         return cookieStore.getAll();

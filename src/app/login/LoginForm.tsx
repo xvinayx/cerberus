@@ -1,9 +1,10 @@
 "use client";
 
 import { useState, type FormEvent } from "react";
-import { createClient } from "@/lib/supabase/client";
+import { useAuth } from "@/components/AuthProvider";
 
 export default function LoginForm({ next, linkError }: { next: string; linkError: boolean }) {
+  const { supabase } = useAuth();
   const [email, setEmail] = useState("");
   const [status, setStatus] = useState<"idle" | "sending" | "sent">("idle");
   const [error, setError] = useState<string | null>(
@@ -12,9 +13,10 @@ export default function LoginForm({ next, linkError }: { next: string; linkError
 
   async function onSubmit(e: FormEvent) {
     e.preventDefault();
+    if (!supabase) return;
     setStatus("sending");
     setError(null);
-    const { error: err } = await createClient().auth.signInWithOtp({
+    const { error: err } = await supabase.auth.signInWithOtp({
       email: email.trim(),
       options: {
         emailRedirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(next)}`,

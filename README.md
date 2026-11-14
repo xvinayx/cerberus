@@ -44,7 +44,7 @@ Sign-in and hearts use [Supabase](https://supabase.com) (free tier) for accounts
 3. **Allow your site's address:** **Authentication → URL Configuration**. Set **Site URL** to your live site (for example `https://cerberus-xxxx.vercel.app`) and add these under **Redirect URLs**:
    - `https://YOUR-SITE/**`
    - `http://localhost:3000/**` (for local development)
-4. **Add the keys to Vercel:** from **Project Settings → API Keys** (or **Data API**) copy the project URL and the publishable (anon) key into Vercel environment variables `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, then redeploy. (`NEXT_PUBLIC_SUPABASE_ANON_KEY` also works.) Sign-in now works, but a link only works in the same browser that requested it.
+4. **Add the keys to Vercel:** from **Project Settings → API Keys** (or **Data API**) copy the project URL and the publishable key (`sb_publishable_…`, or the older anon key) into Vercel environment variables `SUPABASE_URL` and `SUPABASE_PUBLISHABLE_KEY`, then redeploy. Never use the secret key: the publishable key is sent to visitors' browsers. (`SUPABASE_ANON_KEY` and the `NEXT_PUBLIC_`-prefixed names also work.) Sign-in now works, but a link only works in the same browser that requested it.
 
 Before real users arrive:
 

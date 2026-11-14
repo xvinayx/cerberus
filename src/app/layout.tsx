@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import AuthProvider from "@/components/AuthProvider";
 import SiteHeader from "@/components/SiteHeader";
-import { authEnabled } from "@/lib/supabase/config";
+import { getSupabaseConfig, isAuthEnabled } from "@/lib/supabase/config";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -21,8 +21,8 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className="flex min-h-full flex-col">
-        {authEnabled ? (
-          <AuthProvider>
+        {isAuthEnabled() ? (
+          <AuthProvider config={getSupabaseConfig()}>
             <SiteHeader />
             {children}
           </AuthProvider>

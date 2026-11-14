@@ -1,8 +1,11 @@
 import type { Metadata } from "next";
 import { notFound, redirect } from "next/navigation";
-import { authEnabled, safeNextPath } from "@/lib/supabase/config";
+import { isAuthEnabled, safeNextPath } from "@/lib/supabase/config";
 import { createClient } from "@/lib/supabase/server";
 import LoginForm from "./LoginForm";
+
+// Depends on who is signed in and on runtime settings: never pre-build it.
+export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = { title: "Sign in" };
 
@@ -11,7 +14,7 @@ export default async function LoginPage({
 }: {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
-  if (!authEnabled) notFound();
+  if (!isAuthEnabled()) notFound();
   const params = await searchParams;
   const next = safeNextPath(typeof params.next === "string" ? params.next : null);
 
