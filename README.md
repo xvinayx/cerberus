@@ -42,13 +42,16 @@ Sign-in and hearts use [Supabase](https://supabase.com) (free tier) for accounts
 1. **Create a project** at supabase.com.
 2. **Create the table:** in the Supabase dashboard open **SQL Editor**, paste the contents of `supabase/migrations/0001_favorites.sql`, and click **Run**. It creates the `favorites` table with row-level security, so each person can only see and change their own hearts.
 3. **Allow your site's address:** **Authentication → URL Configuration**. Set **Site URL** to your live site (for example `https://cerberus-xxxx.vercel.app`) and add these under **Redirect URLs**:
-   - `https://YOUR-SITE/auth/callback`
-   - `http://localhost:3000/auth/callback` (for local development)
-4. **Make sign-in links work on any device (recommended):** **Authentication → Emails → Templates**. In both the **Magic Link** and **Confirm signup** templates, change the link's address to
+   - `https://YOUR-SITE/**`
+   - `http://localhost:3000/**` (for local development)
+4. **Add the keys to Vercel:** from **Project Settings → API Keys** (or **Data API**) copy the project URL and the publishable (anon) key into Vercel environment variables `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, then redeploy. (`NEXT_PUBLIC_SUPABASE_ANON_KEY` also works.) Sign-in now works, but a link only works in the same browser that requested it.
+
+Before real users arrive:
+
+5. **Set up email sending:** Supabase's built-in email only sends a few messages an hour and is meant for testing. Under **Authentication → Emails → SMTP Settings**, connect an email service such as Resend, Postmark or Amazon SES.
+6. **Make sign-in links work on any device:** once custom SMTP is set up, Supabase lets you edit email templates. In **Authentication → Emails**, open the **Magic Link** and **Confirm signup** templates and change the link's address from `{{ .ConfirmationURL }}` to
    `{{ .RedirectTo }}&token_hash={{ .TokenHash }}&type=email`
-   Without this, a link only works in the same browser that requested it.
-5. **Add the keys to Vercel:** from **Project Settings → API Keys** (or **Data API**) copy the project URL and the publishable (anon) key into Vercel environment variables `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, then redeploy. (`NEXT_PUBLIC_SUPABASE_ANON_KEY` also works.)
-6. **Before real users arrive, set up email sending:** Supabase's built-in email only sends a few messages an hour and is meant for testing. Under **Authentication → Emails → SMTP Settings**, connect an email service such as Resend, Postmark or Amazon SES.
+   so the line reads `<a href="{{ .RedirectTo }}&token_hash={{ .TokenHash }}&type=email">Log In</a>`. Save both.
 
 ## Project structure
 
