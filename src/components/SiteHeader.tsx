@@ -1,4 +1,5 @@
 import Link from "next/link";
+import AccountMenu from "./AccountMenu";
 import Logo from "./Logo";
 
 export default function SiteHeader() {
@@ -21,6 +22,7 @@ export default function SiteHeader() {
           >
             Lease
           </Link>
+          <AccountMenu />
         </nav>
       </div>
     </header>

@@ -14,6 +14,7 @@ Leaflet with OpenStreetMap tiles (no API key needed).
 - **Sorting**: newest, price, or size.
 - **Property detail pages**: listing photo, price/SF or estimated rent, property facts, a location map, listing brokers, a link to the full listing on kidder.com, and nearby listings.
 - **AI search**: describe what you need in plain English ("warehouse for lease in Kent over 20,000 SF under $1.50/SF/month") and Claude turns it into the regular filters, with a one-line summary of how it read the request. Needs an Anthropic API key (see below).
+- **Accounts and saved properties**: people sign in with an emailed link (no password) and tap the heart on any listing to save it. "Saved properties" in the account menu lists them. Needs a Supabase project (see below).
 - **JSON API**: `GET /api/properties` takes the same query parameters as the search page and returns one page of results.
 
 ## Getting started
@@ -33,6 +34,21 @@ AI search calls the Claude API, so it needs an Anthropic API key. Without one, t
 - **On Vercel:** project → **Settings** → **Environment Variables**, add `ANTHROPIC_API_KEY`, then redeploy.
 
 How it works: `POST /api/ai-search` sends the query to Claude (`src/lib/ai-search.ts`), which returns filters in a fixed schema (structured outputs). The app then runs its normal search with those filters, so Claude never invents listings. Each search costs roughly a cent or less in API usage. The route limits each visitor to 10 AI searches a minute (per server instance) and 300 characters per query.
+
+### Sign-in and saved properties setup
+
+Sign-in and hearts use [Supabase](https://supabase.com) (free tier) for accounts and storage. Until it's configured, the Sign in link and heart buttons are hidden.
+
+1. **Create a project** at supabase.com.
+2. **Create the table:** in the Supabase dashboard open **SQL Editor**, paste the contents of `supabase/migrations/0001_favorites.sql`, and click **Run**. It creates the `favorites` table with row-level security, so each person can only see and change their own hearts.
+3. **Allow your site's address:** **Authentication → URL Configuration**. Set **Site URL** to your live site (for example `https://cerberus-xxxx.vercel.app`) and add these under **Redirect URLs**:
+   - `https://YOUR-SITE/auth/callback`
+   - `http://localhost:3000/auth/callback` (for local development)
+4. **Make sign-in links work on any device (recommended):** **Authentication → Emails → Templates**. In both the **Magic Link** and **Confirm signup** templates, change the link's address to
+   `{{ .RedirectTo }}&token_hash={{ .TokenHash }}&type=email`
+   Without this, a link only works in the same browser that requested it.
+5. **Add the keys to Vercel:** from **Project Settings → API Keys** (or **Data API**) copy the project URL and the publishable (anon) key into Vercel environment variables `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, then redeploy. (`NEXT_PUBLIC_SUPABASE_ANON_KEY` also works.)
+6. **Before real users arrive, set up email sending:** Supabase's built-in email only sends a few messages an hour and is meant for testing. Under **Authentication → Emails → SMTP Settings**, connect an email service such as Resend, Postmark or Amazon SES.
 
 ## Project structure
 
@@ -80,4 +96,4 @@ Notes on the data:
 ## Not built yet
 
 - Scheduled data refreshes (for example, a nightly GitHub Action that runs the import).
-- User accounts, saved properties, and saved searches.
+- Saved searches and email alerts for new matching listings.

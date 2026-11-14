@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import HeartButton from "@/components/HeartButton";
 import ListingPhoto from "@/components/ListingPhoto";
 import MapLoader from "@/components/MapLoader";
 import PropertyCard from "@/components/PropertyCard";
@@ -128,7 +129,10 @@ export default async function PropertyPage({ params }: { params: Params }) {
               <span className="rounded bg-slate-100 px-2 py-0.5 text-xs font-semibold text-slate-700">{p.subtype}</span>
             )}
           </div>
-          <h1 className="mt-2 text-2xl font-bold text-ink sm:text-3xl">{p.title}</h1>
+          <div className="mt-2 flex items-start justify-between gap-4">
+            <h1 className="min-w-0 text-2xl font-bold text-ink sm:text-3xl">{p.title}</h1>
+            <HeartButton propertyId={p.id} title={p.title} variant="labeled" className="flex-none" />
+          </div>
           <p className="mt-1 text-slate-600">{fullAddress(p)}</p>
 
           <p className="mt-4 text-3xl font-bold text-ink">{formatListingPrice(p)}</p>
