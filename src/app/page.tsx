@@ -1,5 +1,7 @@
 import { Suspense } from "react";
+import AiSearchBar from "@/components/AiSearchBar";
 import FilterBar from "@/components/FilterBar";
+import { aiSearchConfigured } from "@/lib/ai-search";
 import SearchResults from "@/components/SearchResults";
 import { parseFilters } from "@/lib/filters";
 import { DATA_SOURCE, PAGE_SIZE, searchProperties, toMapPin } from "@/lib/properties";
@@ -18,6 +20,7 @@ export default async function SearchPage({
   return (
     <main className="flex h-[calc(100dvh-3.5rem)] flex-col">
       <Suspense>
+        {aiSearchConfigured() && <AiSearchBar />}
         <FilterBar resultCount={results.length} />
         <SearchResults
           properties={pageItems}

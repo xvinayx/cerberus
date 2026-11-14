@@ -83,6 +83,11 @@ export function toMapPin(p: Property): MapPin {
   };
 }
 
+/** Every "City, ST" with at least one listing, alphabetical. */
+export function getMarkets(): string[] {
+  return [...new Set(LISTINGS.map((p) => `${p.city}, ${p.state}`))].sort();
+}
+
 export function getPropertyById(id: string): Property | undefined {
   return BY_ID.get(id);
 }

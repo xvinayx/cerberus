@@ -13,6 +13,7 @@ Leaflet with OpenStreetMap tiles (no API key needed).
 - **Filters**: for sale or for lease, property type, price (or $/SF/month for leases), size, and a search box that matches city, address, ZIP, property name, or broker. Every filter is stored in the URL, so searches can be shared and the back button works.
 - **Sorting**: newest, price, or size.
 - **Property detail pages**: listing photo, price/SF or estimated rent, property facts, a location map, listing brokers, a link to the full listing on kidder.com, and nearby listings.
+- **AI search**: describe what you need in plain English ("warehouse for lease in Kent over 20,000 SF under $1.50/SF/month") and Claude turns it into the regular filters, with a one-line summary of how it read the request. Needs an Anthropic API key (see below).
 - **JSON API**: `GET /api/properties` takes the same query parameters as the search page and returns one page of results.
 
 ## Getting started
@@ -23,6 +24,15 @@ npm run dev
 ```
 
 Then open http://localhost:3000.
+
+### AI search setup
+
+AI search calls the Claude API, so it needs an Anthropic API key. Without one, the AI search bar is hidden and everything else works.
+
+- **Locally:** copy `.env.example` to `.env.local` and set `ANTHROPIC_API_KEY`.
+- **On Vercel:** project → **Settings** → **Environment Variables**, add `ANTHROPIC_API_KEY`, then redeploy.
+
+How it works: `POST /api/ai-search` sends the query to Claude (`src/lib/ai-search.ts`), which returns filters in a fixed schema (structured outputs). The app then runs its normal search with those filters, so Claude never invents listings. Each search costs roughly a cent or less in API usage. The route limits each visitor to 10 AI searches a minute (per server instance) and 300 characters per query.
 
 ## Project structure
 
